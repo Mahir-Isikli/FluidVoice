@@ -2399,6 +2399,52 @@ final class SettingsStore: ObservableObject {
         }
     }
 
+    /// Optional shortcut that re-inserts the most recent transcript on demand.
+    /// `nil` means unbound (opt-in). Supports keyboard or mouse-button binding.
+    var pasteLastTranscriptShortcut: HotkeyShortcut? {
+        get {
+            if let data = defaults.data(forKey: Keys.pasteLastTranscriptShortcut),
+               let shortcut = try? JSONDecoder().decode(HotkeyShortcut.self, from: data)
+            {
+                return shortcut
+            }
+            return nil
+        }
+        set {
+            objectWillChange.send()
+            guard let newValue else {
+                self.defaults.removeObject(forKey: Keys.pasteLastTranscriptShortcut)
+                return
+            }
+            if let data = try? JSONEncoder().encode(newValue) {
+                self.defaults.set(data, forKey: Keys.pasteLastTranscriptShortcut)
+            }
+        }
+    }
+
+    /// Optional shortcut that presses Return into the focused app (send-message helper).
+    /// `nil` means unbound (opt-in). Supports keyboard or mouse-button binding.
+    var pressEnterShortcut: HotkeyShortcut? {
+        get {
+            if let data = defaults.data(forKey: Keys.pressEnterShortcut),
+               let shortcut = try? JSONDecoder().decode(HotkeyShortcut.self, from: data)
+            {
+                return shortcut
+            }
+            return nil
+        }
+        set {
+            objectWillChange.send()
+            guard let newValue else {
+                self.defaults.removeObject(forKey: Keys.pressEnterShortcut)
+                return
+            }
+            if let data = try? JSONEncoder().encode(newValue) {
+                self.defaults.set(data, forKey: Keys.pressEnterShortcut)
+            }
+        }
+    }
+
     var commandModeConfirmBeforeExecute: Bool {
         get {
             // Default to true (safer - ask before running commands)
@@ -4367,6 +4413,8 @@ private extension SettingsStore {
         static let commandModeHotkeyShortcut = "CommandModeHotkeyShortcut"
         static let commandModeConfirmBeforeExecute = "CommandModeConfirmBeforeExecute"
         static let cancelRecordingHotkeyShortcut = "CancelRecordingHotkeyShortcut"
+        static let pasteLastTranscriptShortcut = "PasteLastTranscriptShortcut"
+        static let pressEnterShortcut = "PressEnterShortcut"
         static let commandModeLinkedToGlobal = "CommandModeLinkedToGlobal"
         static let commandModeShortcutEnabled = "CommandModeShortcutEnabled"
 

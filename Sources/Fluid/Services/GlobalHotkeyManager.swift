@@ -48,6 +48,8 @@ final class GlobalHotkeyManager: NSObject {
     private nonisolated(unsafe) var eventTap: CFMachPort?
     private nonisolated(unsafe) var runLoopSource: CFRunLoopSource?
     private let asrService: ASRService
+    /// Dedicated typing instance for auxiliary actions (paste-last transcript).
+    private let auxTypingService = TypingService()
     private var primaryShortcuts: [HotkeyShortcut]
     private var promptModeShortcut: HotkeyShortcut
     private var commandModeShortcut: HotkeyShortcut?
@@ -541,6 +543,48 @@ final class GlobalHotkeyManager: NSObject {
         Int(event.getIntegerValueField(.mouseEventButtonNumber))
     }
 
+    // MARK: - Auxiliary actions (paste last transcript / press enter)
+
+    /// Checks the configured auxiliary-action shortcuts against `predicate` and triggers the
+    /// first match. `predicate` decides keyboard vs mouse matching at the call site, so the
+    /// same logic serves both the key-down and mouse-down dispatch paths.
+    /// Returns true when an action fired (caller should consume the event).
+    private func handleAuxiliaryActionShortcut(matching predicate: (HotkeyShortcut) -> Bool) -> Bool {
+        if let shortcut = SettingsStore.shared.pressEnterShortcut, predicate(shortcut) {
+            self.triggerPressEnter()
+            return true
+        }
+        if let shortcut = SettingsStore.shared.pasteLastTranscriptShortcut, predicate(shortcut) {
+            self.triggerPasteLastTranscript()
+            return true
+        }
+        return false
+    }
+
+    /// Synthesizes a Return key press into the focused application.
+    private func triggerPressEnter() {
+        DebugLogger.shared.info("Press Enter shortcut triggered", source: "GlobalHotkeyManager")
+        let returnVirtualKey: CGKeyCode = 36 // kVK_Return
+        guard let keyDown = CGEvent(keyboardEventSource: nil, virtualKey: returnVirtualKey, keyDown: true),
+              let keyUp = CGEvent(keyboardEventSource: nil, virtualKey: returnVirtualKey, keyDown: false)
+        else {
+            DebugLogger.shared.error("Failed to create Return key events for Press Enter", source: "GlobalHotkeyManager")
+            return
+        }
+        keyDown.post(tap: .cghidEventTap)
+        keyUp.post(tap: .cghidEventTap)
+    }
+
+    /// Re-inserts the most recent transcript into the focused application.
+    private func triggerPasteLastTranscript() {
+        guard let text = TranscriptionHistoryStore.shared.entries.first?.processedText, !text.isEmpty else {
+            DebugLogger.shared.info("Paste Last Transcript triggered but history is empty", source: "GlobalHotkeyManager")
+            return
+        }
+        DebugLogger.shared.info("Paste Last Transcript shortcut triggered", source: "GlobalHotkeyManager")
+        self.auxTypingService.typeTextInstantly(text)
+    }
+
     private func beginPrimaryShortcutPress(_ press: ActivePrimaryShortcutPress) -> Bool {
         self.state.withLock {
             guard self.state.activePrimaryShortcutPress == nil, !self.state.isKeyPressed else {
@@ -647,6 +691,11 @@ final class GlobalHotkeyManager: NSObject {
                 if handled {
                     return nil // Consume event only if we did something
                 }
+            }
+
+            // Auxiliary actions (paste-last transcript / press enter) bound to a keyboard shortcut.
+            if self.handleAuxiliaryActionShortcut(matching: { $0.matches(keyCode: keyCode, modifiers: eventModifiers) }) {
+                return nil
             }
 
             if let assignment = self.promptShortcutAssignments.first(where: { $0.shortcut.matches(keyCode: keyCode, modifiers: eventModifiers) }) {
@@ -886,6 +935,12 @@ final class GlobalHotkeyManager: NSObject {
         case .leftMouseDown, .rightMouseDown, .otherMouseDown:
             self.markOtherInputDuringModifierOnly()
             let mouseButton = self.mouseButton(from: event)
+
+            // Auxiliary actions (paste-last transcript / press enter) bound to a mouse button.
+            if self.handleAuxiliaryActionShortcut(matching: { $0.matchesMouse(button: mouseButton, modifiers: eventModifiers) }) {
+                return nil
+            }
+
             if self.primaryShortcuts.contains(where: { $0.matchesMouse(button: mouseButton, modifiers: eventModifiers) }) {
                 guard self.beginPrimaryShortcutPress(.mouse(mouseButton)) else { return nil }
                 self.handlePrimaryDictationTriggerDown()

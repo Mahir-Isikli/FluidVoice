@@ -77,6 +77,8 @@ enum ShortcutRecordingTarget: Hashable {
     case command
     case edit
     case cancel
+    case pasteLast
+    case pressEnter
     case dictationPrompt(String)
     case newPrompt
 
@@ -92,6 +94,10 @@ enum ShortcutRecordingTarget: Hashable {
             return "Edit Mode"
         case .cancel:
             return "Cancel Recording"
+        case .pasteLast:
+            return "Paste Last Transcript"
+        case .pressEnter:
+            return "Press Enter"
         case .dictationPrompt:
             return "Prompt Shortcut"
         case .newPrompt:
@@ -103,7 +109,7 @@ enum ShortcutRecordingTarget: Hashable {
         switch self {
         case .secondaryDictation, .command, .edit:
             return true
-        case .primaryDictation, .cancel, .dictationPrompt, .newPrompt:
+        case .primaryDictation, .cancel, .pasteLast, .pressEnter, .dictationPrompt, .newPrompt:
             return false
         }
     }
@@ -114,7 +120,12 @@ enum ShortcutRecordingTarget: Hashable {
     }
 
     var allowsMouseShortcut: Bool {
-        self.isPrimaryDictation
+        switch self {
+        case .primaryDictation, .pasteLast, .pressEnter:
+            return true
+        default:
+            return false
+        }
     }
 
     var isPrimaryDictation: Bool {
@@ -182,6 +193,8 @@ struct ContentView: View {
     @State private var commandModeHotkeyShortcut: HotkeyShortcut? = SettingsStore.shared.commandModeHotkeyShortcut
     @State private var rewriteModeHotkeyShortcut: HotkeyShortcut = SettingsStore.shared.rewriteModeHotkeyShortcut
     @State private var cancelRecordingHotkeyShortcut: HotkeyShortcut = SettingsStore.shared.cancelRecordingHotkeyShortcut
+    @State private var pasteLastTranscriptShortcut: HotkeyShortcut? = SettingsStore.shared.pasteLastTranscriptShortcut
+    @State private var pressEnterShortcut: HotkeyShortcut? = SettingsStore.shared.pressEnterShortcut
     @State private var isPromptModeShortcutEnabled: Bool = SettingsStore.shared.promptModeShortcutEnabled
     @State private var isCommandModeShortcutEnabled: Bool = SettingsStore.shared.commandModeShortcutEnabled
     @State private var isRewriteModeShortcutEnabled: Bool = SettingsStore.shared.rewriteModeShortcutEnabled
@@ -446,6 +459,12 @@ struct ContentView: View {
             .onChange(of: self.commandModeHotkeyShortcut) { _, newValue in
                 SettingsStore.shared.commandModeHotkeyShortcut = newValue
                 self.hotkeyManager?.updateCommandModeShortcut(newValue)
+            }
+            .onChange(of: self.pasteLastTranscriptShortcut) { _, newValue in
+                SettingsStore.shared.pasteLastTranscriptShortcut = newValue
+            }
+            .onChange(of: self.pressEnterShortcut) { _, newValue in
+                SettingsStore.shared.pressEnterShortcut = newValue
             }
             .onChange(of: self.isPromptModeShortcutEnabled) { newValue in
                 self.handlePromptShortcutEnabledChange(newValue)
@@ -999,6 +1018,8 @@ struct ContentView: View {
         ]
         let optionalConfiguredShortcuts: [(ShortcutRecordingTarget, HotkeyShortcut?)] = [
             (.command, self.commandModeHotkeyShortcut),
+            (.pasteLast, self.pasteLastTranscriptShortcut),
+            (.pressEnter, self.pressEnterShortcut),
         ]
 
         for (otherTarget, configuredShortcut) in configuredShortcuts where otherTarget != target {
@@ -1064,6 +1085,12 @@ struct ContentView: View {
         case .cancel:
             self.cancelRecordingHotkeyShortcut = shortcut
             SettingsStore.shared.cancelRecordingHotkeyShortcut = shortcut
+        case .pasteLast:
+            self.pasteLastTranscriptShortcut = shortcut
+            SettingsStore.shared.pasteLastTranscriptShortcut = shortcut
+        case .pressEnter:
+            self.pressEnterShortcut = shortcut
+            SettingsStore.shared.pressEnterShortcut = shortcut
         case let .dictationPrompt(key):
             guard let selection = SettingsStore.shared.dictationPromptSelection(forConfigurationKey: key) else { return }
             var configuration = SettingsStore.shared.dictationPromptConfiguration(for: selection)
@@ -1108,7 +1135,7 @@ struct ContentView: View {
             self.isRewriteModeShortcutEnabled = enabled
             SettingsStore.shared.rewriteModeShortcutEnabled = enabled
             self.hotkeyManager?.updateRewriteModeShortcutEnabled(enabled)
-        case .primaryDictation, .cancel, .dictationPrompt, .newPrompt:
+        case .primaryDictation, .cancel, .pasteLast, .pressEnter, .dictationPrompt, .newPrompt:
             break
         }
     }
@@ -1435,6 +1462,8 @@ struct ContentView: View {
             commandModeShortcut: self.$commandModeHotkeyShortcut,
             rewriteShortcut: self.$rewriteModeHotkeyShortcut,
             cancelRecordingShortcut: self.$cancelRecordingHotkeyShortcut,
+            pasteLastTranscriptShortcut: self.$pasteLastTranscriptShortcut,
+            pressEnterShortcut: self.$pressEnterShortcut,
             commandModeShortcutEnabled: self.$isCommandModeShortcutEnabled,
             rewriteShortcutEnabled: self.$isRewriteModeShortcutEnabled,
             hotkeyManagerInitialized: self.$hotkeyManagerInitialized,
@@ -4082,6 +4111,8 @@ private extension ContentView {
         self.commandModeHotkeyShortcut = SettingsStore.shared.commandModeHotkeyShortcut
         self.rewriteModeHotkeyShortcut = SettingsStore.shared.rewriteModeHotkeyShortcut
         self.cancelRecordingHotkeyShortcut = SettingsStore.shared.cancelRecordingHotkeyShortcut
+        self.pasteLastTranscriptShortcut = SettingsStore.shared.pasteLastTranscriptShortcut
+        self.pressEnterShortcut = SettingsStore.shared.pressEnterShortcut
         self.isPromptModeShortcutEnabled = SettingsStore.shared.promptModeShortcutEnabled
         self.isCommandModeShortcutEnabled = SettingsStore.shared.commandModeShortcutEnabled
         self.isRewriteModeShortcutEnabled = SettingsStore.shared.rewriteModeShortcutEnabled

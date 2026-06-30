@@ -40,6 +40,8 @@ struct SettingsView: View {
     @Binding var commandModeShortcut: HotkeyShortcut?
     @Binding var rewriteShortcut: HotkeyShortcut
     @Binding var cancelRecordingShortcut: HotkeyShortcut
+    @Binding var pasteLastTranscriptShortcut: HotkeyShortcut?
+    @Binding var pressEnterShortcut: HotkeyShortcut?
     @Binding var commandModeShortcutEnabled: Bool
     @Binding var rewriteShortcutEnabled: Bool
     @Binding var hotkeyManagerInitialized: Bool
@@ -755,6 +757,58 @@ struct SettingsView: View {
                                             DebugLogger.shared.debug("Starting to record new cancel shortcut", source: "SettingsView")
                                             self.shortcutRecordingMessage = nil
                                             self.activeShortcutRecordingTarget = .cancel
+                                        }
+                                    )
+                                    Divider().opacity(0.2).padding(.vertical, 4)
+
+                                    self.shortcutRow(
+                                        content: .init(
+                                            icon: "doc.on.clipboard.fill",
+                                            iconColor: .secondary,
+                                            title: "Paste Last Transcript",
+                                            description: "Re-insert the last thing you dictated. Bind a key or mouse button."
+                                        ),
+                                        shortcut: self.pasteLastTranscriptShortcut,
+                                        isRecording: self.isRecording(.pasteLast),
+                                        isAnyRecordingActive: self.isRecordingAnyShortcut,
+                                        recordingMessage: self.isRecording(.pasteLast) ? self.shortcutRecordingMessage : nil,
+                                        onChangePressed: {
+                                            DebugLogger.shared.debug("Starting to record new paste-last shortcut", source: "SettingsView")
+                                            self.shortcutRecordingMessage = nil
+                                            self.activeShortcutRecordingTarget = .pasteLast
+                                        },
+                                        onRemovePressed: {
+                                            if self.activeShortcutRecordingTarget == .pasteLast {
+                                                self.shortcutRecordingMessage = nil
+                                                self.activeShortcutRecordingTarget = nil
+                                            }
+                                            self.pasteLastTranscriptShortcut = nil
+                                        }
+                                    )
+                                    Divider().opacity(0.2).padding(.vertical, 4)
+
+                                    self.shortcutRow(
+                                        content: .init(
+                                            icon: "return",
+                                            iconColor: .secondary,
+                                            title: "Press Enter",
+                                            description: "Send the focused field with Return. Bind a key or mouse button."
+                                        ),
+                                        shortcut: self.pressEnterShortcut,
+                                        isRecording: self.isRecording(.pressEnter),
+                                        isAnyRecordingActive: self.isRecordingAnyShortcut,
+                                        recordingMessage: self.isRecording(.pressEnter) ? self.shortcutRecordingMessage : nil,
+                                        onChangePressed: {
+                                            DebugLogger.shared.debug("Starting to record new press-enter shortcut", source: "SettingsView")
+                                            self.shortcutRecordingMessage = nil
+                                            self.activeShortcutRecordingTarget = .pressEnter
+                                        },
+                                        onRemovePressed: {
+                                            if self.activeShortcutRecordingTarget == .pressEnter {
+                                                self.shortcutRecordingMessage = nil
+                                                self.activeShortcutRecordingTarget = nil
+                                            }
+                                            self.pressEnterShortcut = nil
                                         }
                                     )
                                 }
